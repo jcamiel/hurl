@@ -27,13 +27,6 @@ if [[ "$(uname -s)" = "Linux*" ]]; then
 fi
 
 
-# integration tests
-cd integration/hurlfmt
-./integration.py
-./test_html_output.py tests_export/*.html
-cd -
-
 cd integration/hurl
-./integration.py
-./test_curl_commands.sh 
+tests_ok/parallel_all.sh
 
