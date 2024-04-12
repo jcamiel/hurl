@@ -28,5 +28,9 @@ fi
 
 
 cd integration/hurl
-tests_ok/parallel_all.sh
+
+for i in {1..10}; do
+  tests_ok/parallel_all.sh
+  sleep 5
+done
 
