@@ -35,6 +35,11 @@ jobs:
         bin/release/release.sh
         PATH=${PWD}/target/release:$PATH
         bin/test/test_integ.sh
+    - name: Archive HTML reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: html-report
+        path: integration/hurl/build/report/
   test-ubuntu-x64-latest:
     runs-on: ubuntu-latest
     strategy:
@@ -62,3 +67,9 @@ jobs:
           bin/release/release.sh
           PATH=${PWD}/target/release:$PATH
           bin/test/test_integ.sh
+
+      - name: Archive HTML reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: html-report
+          path: integration/hurl/build/report/
