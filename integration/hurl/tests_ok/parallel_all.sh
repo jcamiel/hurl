@@ -7,6 +7,7 @@ set +euo pipefail
 
 hurl --parallel --test \
   --report-tap build/parallel-all.txt \
+  --report-html build/report/ \
   tests_ok/assert_body.hurl \
   tests_ok/assert_header.hurl \
   tests_ok/assert_json.hurl \
