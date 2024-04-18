@@ -35,6 +35,7 @@ pub enum WorkerMessage {
     ShutDown,
 }
 
+#[allow(dead_code)]
 /// A message sent from worker to runner when the input file can't be read.
 pub struct IOErrorMsg {
     /// Identifier of the worker sending this message.
@@ -56,6 +57,7 @@ impl IOErrorMsg {
     }
 }
 
+#[allow(dead_code)]
 /// A message sent from worker to runner when the input file can't be parsed.
 pub struct ParsingErrorMsg {
     /// Identifier of the worker sending this message.
@@ -101,6 +103,7 @@ impl RunningMsg {
     }
 }
 
+#[allow(dead_code)]
 /// A message sent from worker to runner when a Hurl file has completed, whether successful or not.
 pub struct CompletedMsg {
     /// Identifier of the worker sending this message.

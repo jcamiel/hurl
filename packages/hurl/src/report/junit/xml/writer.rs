@@ -29,6 +29,7 @@ use crate::report::junit::xml::{Element, XmlDocument, XmlNode};
 
 /// Errors raised when serializing an XML document.
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum WriterError {
     Io(std::io::Error),
     FromUtf8Error(FromUtf8Error),

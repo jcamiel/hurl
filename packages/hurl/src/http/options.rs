@@ -22,6 +22,7 @@ use hurl_core::ast::Retry;
 use crate::http::request::RequestedHttpVersion;
 use crate::http::IpResolve;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ClientOptions {
     pub aws_sigv4: Option<String>,
