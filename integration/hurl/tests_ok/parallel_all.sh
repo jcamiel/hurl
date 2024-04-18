@@ -2,9 +2,6 @@
 set -Eeuo pipefail
 rm -f build/parallel-all.txt
 
-# Some tests are failing but we want to continue until the end
-set +euo pipefail
-
 hurl --parallel --test \
   --report-tap build/parallel-all.txt \
   --report-html build/report/ \

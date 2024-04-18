@@ -231,7 +231,9 @@ fn new_call_timings(
     let height = CALL_HEIGHT - CALL_INSET * 2;
 
     // DNS
-    let dns_x = (call.timings.begin_call - times.start).to_std().unwrap();
+    let dns_x = (call.timings.begin_call - times.start)
+        .to_std()
+        .unwrap_or(Duration::new(0, 0));
     let dns_x = to_pixel(dns_x, scale_x);
     let dns_width = to_pixel(call.timings.name_lookup, scale_x);
     if dns_width.0 > 0.0 {

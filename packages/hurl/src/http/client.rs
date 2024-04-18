@@ -283,6 +283,11 @@ impl Client {
         let duration = start.elapsed();
         let stop_dt = start_dt + duration;
         let timings = Timings::new(&mut self.handle, start_dt, stop_dt);
+        // if stop_dt < start_dt {
+        //     let message = format!("start={start_dt:?} stop={stop_dt:?}");
+        //     let error = HttpError::Libcurl { code: 0, description: message };
+        //     return Err(error)
+        // }
 
         let request = Request::new(&method.to_string(), &url, request_headers, request_body);
         let response = Response::new(
