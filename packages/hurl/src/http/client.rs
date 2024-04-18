@@ -281,7 +281,8 @@ impl Client {
             None
         };
         let duration = start.elapsed();
-        let stop_dt = start_dt + duration;
+        //let stop_dt = start_dt + duration;
+        let stop_dt = Utc::now();
         let timings = Timings::new(&mut self.handle, start_dt, stop_dt);
         if (stop_dt - start_dt).to_std().is_err() {
             let message = format!("start={start_dt:?} stop={stop_dt:?}");
