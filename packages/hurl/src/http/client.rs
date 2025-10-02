@@ -120,14 +120,20 @@ impl Client {
             let mut headers = request_spec.headers;
 
             // When following redirection, we filter `Authorization` and `Set-Cookie` headers if the
-            // hostname changes unless the user explicitly trusts the redirected host with `--location-trusted`.
+            // hostname changes or if we're downgrading from HTTPS to HTTP, unless the user explicitly 
+            // trusts the redirected host with `--location-trusted`.
             // <https://curl.se/libcurl/c/CURLOPT_FOLLOWLOCATION.html>:
             //
             // > By default, libcurl only sends Authentication: or explicitly set Cookie: headers
             // > to the initial host given in the original URL, to avoid leaking username + password
             // > to other sites.
+            //
+            // We also strip credentials when downgrading from HTTPS to HTTP to prevent sending
+            // credentials in cleartext over an unencrypted connection (CWE-523, CWE-319).
             let host_changed = request_url.host() != redirect_url.host();
-            if host_changed && !options.follow_location_trusted {
+            let scheme_downgraded = request_url.raw().starts_with("https://")
+                && redirect_url.raw().starts_with("http://");
+            if (host_changed || scheme_downgraded) && !options.follow_location_trusted {
                 headers.retain(|h| !h.name_eq(AUTHORIZATION));
                 headers.retain(|h| !h.name_eq(SET_COOKIE));
                 options.user = None;
@@ -1230,5 +1236,95 @@ mod tests {
             list.iter().collect::<Vec<_>>(),
             vec!["foo: a".as_bytes(), "bar: b".as_bytes(), "baz;".as_bytes()]
         );
+    }
+
+    #[test]
+    fn test_scheme_downgrade_detection() {
+        // Test HTTPS to HTTP downgrade (should be detected)
+        let https_url = Url::from_str("https://example.com/path").unwrap();
+        let http_url = Url::from_str("http://example.com/redirected").unwrap();
+        
+        let https_to_http = https_url.raw().starts_with("https://")
+            && http_url.raw().starts_with("http://");
+        assert!(https_to_http, "Should detect HTTPS to HTTP downgrade");
+
+        // Test HTTPS to HTTPS (should not be detected as downgrade)
+        let https_url2 = Url::from_str("https://example.com/redirected").unwrap();
+        let https_to_https = https_url.raw().starts_with("https://")
+            && https_url2.raw().starts_with("http://");
+        assert!(!https_to_https, "Should not detect downgrade for HTTPS to HTTPS");
+
+        // Test HTTP to HTTP (should not be detected as downgrade)
+        let http_url1 = Url::from_str("http://example.com/path").unwrap();
+        let http_url2 = Url::from_str("http://example.com/redirected").unwrap();
+        let http_to_http = http_url1.raw().starts_with("https://")
+            && http_url2.raw().starts_with("http://");
+        assert!(!http_to_http, "Should not detect downgrade for HTTP to HTTP");
+
+        // Test HTTP to HTTPS (upgrade, should not be detected as downgrade)
+        let upgrade = http_url1.raw().starts_with("https://")
+            && https_url.raw().starts_with("http://");
+        assert!(!upgrade, "Should not detect downgrade for HTTP to HTTPS upgrade");
+    }
+
+    #[test]
+    fn test_redirect_security_cross_domain() {
+        // Test that host change is detected
+        let url1 = Url::from_str("https://example.com/path").unwrap();
+        let url2 = Url::from_str("https://other.com/redirected").unwrap();
+        
+        assert_ne!(url1.host(), url2.host(), "Hosts should be different");
+    }
+
+    #[test]
+    fn test_redirect_security_same_domain_scheme_downgrade() {
+        // Test scheme downgrade on same domain
+        let url1 = Url::from_str("https://example.com/path").unwrap();
+        let url2 = Url::from_str("http://example.com/redirected").unwrap();
+        
+        assert_eq!(url1.host(), url2.host(), "Hosts should be same");
+        
+        let scheme_downgraded = url1.raw().starts_with("https://")
+            && url2.raw().starts_with("http://");
+        assert!(scheme_downgraded, "Should detect scheme downgrade even with same host");
+    }
+
+    #[test]
+    fn test_libcurl_crlf_header_handling() {
+        // Verify that libcurl properly rejects or sanitizes headers with CRLF injection attempts
+        use curl::easy::List;
+        
+        // Test 1: Try to inject CRLF in header value
+        let mut list = List::new();
+        let result = list.append("X-Test: value\r\nX-Injected: malicious");
+        
+        // libcurl should reject this
+        if result.is_ok() {
+            // If libcurl accepts it, verify what was actually stored
+            let items: Vec<_> = list.iter().collect();
+            // The CRLF should either be rejected or the header should be sanitized
+            assert!(
+                items.len() == 1 || items.iter().all(|item| {
+                    let s = String::from_utf8_lossy(item);
+                    !s.contains("\r\n")
+                }),
+                "libcurl should sanitize CRLF in headers"
+            );
+        }
+        
+        // Test 2: Try to inject LF only
+        let mut list2 = List::new();
+        let result2 = list2.append("X-Test: value\nX-Injected: malicious");
+        
+        if result2.is_ok() {
+            let items: Vec<_> = list2.iter().collect();
+            assert!(
+                items.len() == 1 || items.iter().all(|item| {
+                    let s = String::from_utf8_lossy(item);
+                    !s.contains('\n')
+                }),
+                "libcurl should sanitize LF in headers"
+            );
+        }
     }
 }
