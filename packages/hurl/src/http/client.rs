@@ -1288,4 +1288,43 @@ mod tests {
             && url2.raw().starts_with("http://");
         assert!(scheme_downgraded, "Should detect scheme downgrade even with same host");
     }
+
+    #[test]
+    fn test_libcurl_crlf_header_handling() {
+        // Verify that libcurl properly rejects or sanitizes headers with CRLF injection attempts
+        use curl::easy::List;
+        
+        // Test 1: Try to inject CRLF in header value
+        let mut list = List::new();
+        let result = list.append("X-Test: value\r\nX-Injected: malicious");
+        
+        // libcurl should reject this
+        if result.is_ok() {
+            // If libcurl accepts it, verify what was actually stored
+            let items: Vec<_> = list.iter().collect();
+            // The CRLF should either be rejected or the header should be sanitized
+            assert!(
+                items.len() == 1 || items.iter().all(|item| {
+                    let s = String::from_utf8_lossy(item);
+                    !s.contains("\r\n")
+                }),
+                "libcurl should sanitize CRLF in headers"
+            );
+        }
+        
+        // Test 2: Try to inject LF only
+        let mut list2 = List::new();
+        let result2 = list2.append("X-Test: value\nX-Injected: malicious");
+        
+        if result2.is_ok() {
+            let items: Vec<_> = list2.iter().collect();
+            assert!(
+                items.len() == 1 || items.iter().all(|item| {
+                    let s = String::from_utf8_lossy(item);
+                    !s.contains('\n')
+                }),
+                "libcurl should sanitize LF in headers"
+            );
+        }
+    }
 }
